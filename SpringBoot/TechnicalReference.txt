@@ -1,0 +1,260 @@
+Git Hub url:
+============
+http://git03/kavithak/customidp/-/tree/main/SpringBoot
+
+cqrs-command-user-service Microservice:
+=======================================
+
+	API to create Idp(IdentityProvider) and IdpUsers(IdentityProviderUsers). 
+	Those details are persisted to postgresql tables and also posted to Kafka topics (user-service and idp-service).
+	
+	API is provided in-memory authentication with credentials 
+	username : admin
+	password : password
+
+	1)Create idpuser
+	POST:
+	http://localhost:8083/api/user/createUser
+	Body:
+	{
+	"targetId": "test",
+	"federation": "SHIB",
+	"idpId": 3,
+	"eduPerson": "123"
+	}
+	Content-type : application/json
+
+	
+	2)Create Idp
+	POST:
+	http://localhost:8083/api/idp/createIdp
+	Body:
+	{
+	"idpName" : "IDP_008",
+	"institutionName" : "Oxford univ"
+	}
+	
+	Content-type : application/json
+	
+	3)Kafka messages can be viewed in below Kafka topic using command-user-service
+	kafka-console-consumer.bat -bootstrap-server localhost:9092 -topic user-service -from-beginning
+	kafka-console-consumer.bat -bootstrap-server localhost:9092 -topic idp-service -from-beginning
+	
+cqrs-query-customidpuser-service Microservice:
+==============================================
+	API to query Idp(IdentityProvider) and IdpUsers(IdentityProviderUsers). 
+	The kafka topics(user-service and idp-service) are listened and the data are persisted to Mongodb collection
+	
+	
+	API is provided in-memory authentication with credentials 
+	username : admin
+	password : password
+	
+	1)Query the Idp user details with pagination and sorting
+	GET:  http://localhost:8084/api/idpuser/getIdpuser
+	
+	2)Query all the idps
+	GET: http://localhost:8084/api/idpuser/getAllIdps
+
+	3)Pagination:
+	http://localhost:8084/api/idpuser/getIdpuser?page=1&size=2&sort=ASC&sortField=userId
+	
+Swagger doc:
+http://localhost:8083/v2/api-docs
+http://localhost:8084/v2/api-docs
+
+swagger-ui:
+http://localhost:8083/swagger-ui.html
+http://localhost:8084/swagger-ui.html
+
+
+Table Creation Steps:
+=====================
+
+CREATE TABLE idp(
+    id serial PRIMARY KEY,
+    institution varchar(50),
+    name varchar(20)
+);
+
+
+CREATE TABLE users(
+id serial PRIMARY KEY,
+provider VARCHAR(20),
+target VARCHAR(20),
+person VARCHAR(20),
+federation VARCHAR(20),
+idp integer references idp (id));
+
+OWASP principles followed:
+==========================
+1)Solved Sql injection by below:
+
+select u from User u where u.email = ?1
+changed to 
+So, we need to change the Spring Data JPA Named Parameters like this.
+
+    @Query("SELECT u FROM User u WHERE u.email = :email")
+    User findUserByEmail(@Param("email") String email);
+	
+2)basic token based authentication
+	Secured API by username and password In memory authentication which will create bearer token to call the services
+3)csrf token
+	Added CSRF token of spring security.
+
+================================================
+Docker file:
+FROM openjdk:8u191-jre-alpine3.8
+COPY target/*.jar app.jar
+ENTRYPOINT ["java","-jar","/app.jar"] 
+
+commands:
+mvn clean package install
+================================================
+
+Kafka Docker compose file:
+version: '3'
+
+services:
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: localhost
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+	  
+commands:
+https://towardsdatascience.com/how-to-install-apache-kafka-using-docker-the-easy-way-4ceb00817d8b
+docker-compose -f docker-compose.yml up -d
+docker exec -it kafka /bin/sh
+cd bin
+cd /opt/kafka(version)/bin
+kafka-topics.sh --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 1 --topic user-service
+kafka-topics.sh --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 1 --topic idp-service
+
+kafka-topics.sh --list --zookeeper zookeeper:2181
+================================================
+Postgres 
+version: '3.8'
+services:
+  db:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+    ports:
+      - '5432:5432'
+    volumes: 
+      - db:/var/lib/postgresql/data
+volumes:
+  db:
+    driver: local
+====================================================
+	
+Docker commands:
+docker version
+docker images -a
+docker rmi 80908900
+docker container ls -a 
+docker build -t apigateway:1.0 .
+
+docker run -d -p8081:8081 --name authenticationcontainer  authentication:1.0
+docker run -d -p8087:8087 --name apigatewaycontainer  apigateway:1.0
+docker run -d -p8083:8083 --name commandcontainer command:1.0
+docker run -d -p8084:8084 --name querycontainer query:1.0 
+====================================================
+docker pull mongo
+docker run -d --name customidp  -p 27017:27017 
+//docker run -d --name customidp  -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=root mongo
+
+docker pull postgres
+docker run --name postgresql -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=root -p 5432:5432 -v /data:/var/lib/postgresql/data -d postgres
+
+start db:
+docker start postgresql
+docker stop postgresql
+
+docker network connect spring-net <mongoCOntainerId>
+docker network connect spring-net <postgresCOntainerId>
+
+=============================================
+docker network create customidp
+docker network connect 
+docker run  -p 8082:8082 --name reactcontainer react:1.0
+
+docker run  -p 8081:8081 --name authenticationcontainer  -e DOCKER_HOST=tcp://localhost:8081 --net customidp  authentication:1.0
+docker run  -p 8087:8087 --name apigatewaycontainer  -e DOCKER_HOST=tcp://localhost:8087  --net customidp apigateway:1.0
+docker run  -p 8083:8083 --name commandcontainer -e DOCKER_HOST=tcp://localhost:8083 --net customidp  command:1.0
+docker run  -p 8084:8084 --name querycontainer -e DOCKER_HOST=tcp://localhost:8084  --net customidp query:1.0
+
+------------------------------------------------------
+
+Mongodb:
+Instance -> Linux
+In SG -> All traffic instead of tcp
+Create using keypair
+login to the instance
+java -version
+sudo yum install -y java-1.8.0-openjdk.x86_64
+
+sudo vi /etc/yum.repos.d/mongodb-org-4.0.repo
+
+[mongodb-org-4.0]
+name=MongoDB repository
+baseUrl=https://repo.mongodb.org/yum/amazon/2013.03/mongodb-org/4.0/x86_64
+gpgcheck=1
+enabled=1
+gpgkey=https://www.mongodb.org/static/pgp/server-4.0.asc
+
+
+-- 
+sudo yum install -y mongodb-org
+
+sudo service mongod start
+
+sudo chkconfig mongod on
+
+mongo console : jsut type mongo
+
+use customidp
+db.createUser({ user: "kavitha" , pwd: "admin" , roles : [{role: "readWrite" , db:"customidp"}]})
+				
+-- configure mongo:
+sudo vi /etc/mongod.conf	
+# network interfaces
+net:
+  port: 27017
+  bindIp: 0.0.0.0  # Enter 0.0.0.0,:: to bind to all IPv4 and IPv6 addresses or, alternatively, use the net.bindIpAll setting.
+
+
+security:
+authorization: 'enabled'
+
+==
+sudo service mongod restart
+
+spring:
+  data:
+    mongodb:
+      uri: mongodb://kavitha:admin@ec2-52-15-79-3.us-east-2.compute.amazonaws.com/customidp
+
+==============
+yum install docker -y	  
+sudo service docker start
+add ec2 docker security group
+
+aws ecr get-login-password --region us-east-1 | docker login  --password-stdin 982485071582.dkr.ecr.us-east-1.amazonaws.com
+
+
+docker run  -p 8082:8082 --name reactcontainer 982485071582.dkr.ecr.us-east-1.amazonaws.com/react
+
+----------------------------------------------
+sudo yum install -y java-1.8.0-openjdk.x86_64

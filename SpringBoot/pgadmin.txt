@@ -1,0 +1,7 @@
+C:\Program Files\PostgreSQL\13
+
+D:\postgresql
+D:\postgresql\data
+
+root
+5432

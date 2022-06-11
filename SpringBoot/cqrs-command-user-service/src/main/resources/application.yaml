@@ -1,0 +1,21 @@
+server:
+   port: 8083
+
+spring:
+  
+  datasource:
+    url: jdbc:postgresql://customidp.cg7zkmtcvksf.us-east-1.rds.amazonaws.com:5432/customidp
+    username: postgres
+    password: password
+
+  kafka:
+    bootstrap-servers:
+      - localhost:9091
+      - localhost:9092
+      - localhost:9093
+    template:
+      default-topic: user-service
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.LongSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+

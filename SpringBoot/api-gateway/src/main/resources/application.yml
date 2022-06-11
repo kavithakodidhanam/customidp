@@ -1,0 +1,23 @@
+server:
+  port: 8087
+
+zuul:
+  routes:
+    authentication:
+      path: /login/**
+      url: http://127.0.0.1:8081/
+      sensitiveHeaders: Cookie,Set-Cookie
+      ignored-headers: Access-Control-Allow-Credentials, Access-Control-Allow-Origin
+      stripPrefix: false
+    command-service:
+      path: /command/**
+      url: http://127.0.0.1:8083/
+      ignored-headers: Access-Control-Allow-Credentials, Access-Control-Allow-Origin
+    query-service:
+      path: /query/**
+      url: http://127.0.0.1:8084/ 
+      ignored-headers: Access-Control-Allow-Credentials, Access-Control-Allow-Origin
+
+
+  sensitiveHeaders:
+  ignored-headers: Access-Control-Allow-Credentials, Access-Control-Allow-Origin

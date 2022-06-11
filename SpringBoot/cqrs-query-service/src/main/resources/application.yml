@@ -1,0 +1,20 @@
+server:
+  port: 8084
+spring:
+  data:
+    mongodb:
+      uri: mongodb+srv://admin:admin@cluster0.d6chl.mongodb.net/?retryWrites=true&w=majority
+      database: customidp
+  kafka:
+   bootstrap-servers:
+      - localhost:9091
+      - localhost:9092
+      - localhost:9093
+   consumer:
+    group-id: user-service-group
+    auto-offset-reset: earliest
+    key-serializer: org.apache.kafka.common.serialization.LongDeserializer
+    value-serializer: org.apache.kafka.common.serialization.StringDeserializer
+      
+  application:
+  name : customIdp

@@ -1,0 +1,88 @@
+cd /d D:
+C:\kafka_2.12-2.4.1\bin\windows
+
+zookeeper-server-start.bat C:\kafka_2.12-2.4.1\config\zookeeper.properties
+
+
+kafka-server-start.bat C:\kafka_2.12-2.4.1\config\server.properties
+
+
+in new cmd prompt:
+kafka-topics.bat --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic user-service
+
+kafka-topics.bat --list --zookeeper localhost:2181
+
+
+kafka-console-consumer.bat --bootstrap-server localhost:2181 --topic user-service-event
+
+Describe:
+kafka-topics.bat -zookeeper localhost:2181 -describe --topic user-service-event
+
+PRoduce:
+kafka-console-producer -broker-list localhost:9092 -topic user-service-event
+
+consume:
+kafka-console-consumer.bat -bootstrap-server localhost:9092 -topic user-service-event -from-beginning
+
+
+delete:
+bin/kafka-topics.sh --zookeeper localhost:2181 --delete --topic user-service-event
+
+
+kafka-delete-records.sh --bootstrap-server kafka:9092 --offset-json-file delete-test.config
+
+kafka-topics.sh --zookeeper zookeeper:2181 --delete --topic user-service-event
+
+
+kafka-consumer-groups.bat -bootstrap-server localhost:9092 -list
+
+
+kafka-consumer-groups.bat --bootstrap-server localhost:9092 --describe --group user-service-group
+
+
+CREATE TABLE idp(
+    id serial PRIMARY KEY,
+    institution varchar(50),
+    name varchar(20)
+);
+
+
+
+CREATE TABLE users(
+id serial PRIMARY KEY,
+provider VARCHAR(20),
+target VARCHAR(20),
+person VARCHAR(20),
+federation VARCHAR(20),
+idp integer references idp (id));
+
+OWASP principles:
+=================
+
+1)Sql injection:
+
+select u from User u where u.email = ?1
+changed to 
+So, we need to change the Spring Data JPA Named Parameters like this.
+
+    @Query("SELECT u FROM User u WHERE u.email = :email")
+    User findUserByEmail(@Param("email") String email);
+	
+2)basic token based authentication
+3)csrf token
+
+Basic token based auth:
+admin
+password
+
+
+Swagger doc:
+http://localhost:8083/v2/api-docs
+http://localhost:8084/v2/api-docs
+
+swagger-ui:
+http://localhost:8083/swagger-ui.html
+http://localhost:8084/swagger-ui.html
+
+MongoDb problem:
+services -> mongodb -> start service
